@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ExoLab — Simulación de exoplanetas posiblemente habitables</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    color-scheme: dark;
+    --bg: #0B0F1E; --bg-deep: #070A14; --panel: #131A2E; --panel-2: #0F1526; --line: #262F4A;
+    --ink: #E9E5D6; --muted: #8B93AC; --gold: #E8B75E; --gold-2: #F4CE85; --teal: #57D6BE; --coral: #E2685C; --violet: #9C8FE0;
+    --serif: "Source Serif 4", Georgia, serif; --mono: "IBM Plex Mono", ui-monospace, monospace; --sans: "Inter", system-ui, sans-serif;
+  }
+  :root[data-theme="light"]{
+    color-scheme: light;
+    --bg:#F3F6FC; --bg-deep:#E7EDF7; --panel:#FFFFFF; --panel-2:#F8FAFE; --line:#C9D3E3;
+    --ink:#172239; --muted:#475671; --gold:#94600C; --gold-2:#AE7111; --teal:#087864; --coral:#AD4035; --violet:#6149AD;
+  }
+  *{box-sizing:border-box;}
+  @media (prefers-reduced-motion: no-preference){
+    body, .panel, .readout, .preset-btn, .val-input, .btn-secondary, .bar-track, .explain-box, .formula-item, .theme-toggle, .stars,
+    h1, h1 em, .subtitle, .eyebrow-row, .kicker, .field label, .field .val, .readout .value, .readout .sub, .refs a, .refs li, .gauge-num .lbl,
+    #gaugeTrack, #orbitSvg circle, #orbitSvg path, #orbitSvg text{
+      transition:background-color .42s ease, color .42s ease, border-color .42s ease, box-shadow .42s ease, opacity .42s ease, fill .42s ease, stroke .42s ease;
+    }
+  }
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(48em 30em at 82% -8%, rgba(156,143,224,.16) 0%, transparent 60%),
+      radial-gradient(50em 34em at 8% 4%, rgba(87,214,190,.10) 0%, transparent 55%),
+      radial-gradient(ellipse 120% 80% at 50% -10%, #16203D 0%, var(--bg) 55%, var(--bg-deep) 100%);
+    color: var(--ink); font-family: var(--sans); line-height: 1.55; min-height:100vh;
+  }
+  body::before{content:'';position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% -10%, #FFFFFF 0%, #F3F6FC 72%, #E8EEF8 100%);opacity:0;z-index:0;}
+  :root[data-theme="light"] body::before{opacity:1;}
+  @media (prefers-reduced-motion: no-preference){body::before{transition:opacity .42s ease;}}
+  :root[data-theme="light"] .stars{opacity:.12;}
+  :root[data-theme="light"] .panel{box-shadow:0 12px 32px -24px rgba(32,54,88,.35);}
+  :root[data-theme="light"] .btn-secondary{background:var(--panel);}
+  :root[data-theme="light"] .preset-btn.active{background:#FFF4DF;}
+  :root[data-theme="light"] .btn-primary{background:linear-gradient(135deg,#F8D895,#E8B75E);}
+  :root[data-theme="light"] #gaugeTrack{stroke:#D7E0EF;}
+  .theme-toggle{position:fixed;top:16px;right:clamp(12px,3vw,32px);z-index:10;display:inline-flex;align-items:center;gap:8px;padding:9px 13px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--ink);font:500 13px var(--sans);cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.12);}
+  .theme-toggle:hover{border-color:var(--gold);}
+  .theme-toggle:focus-visible{outline:3px solid var(--teal);outline-offset:3px;}
+  @media(max-width:600px){.theme-toggle{top:12px;right:12px;padding:7px 10px;font-size:12px}.wrap{padding-top:72px;}}
+  .topbar{ position:fixed; top:0; left:0; right:0; height:3px; z-index:5;
+    background: linear-gradient(90deg, var(--gold), var(--violet) 50%, var(--teal)); }
+  .stars{ position:fixed; inset:0; z-index:0; pointer-events:none; opacity:.55;
+    background-image: radial-gradient(1px 1px at 20px 30px, #fff 100%, transparent), radial-gradient(1px 1px at 140px 90px, #fff 100%, transparent), radial-gradient(1.5px 1.5px at 300px 40px, #fff 100%, transparent), radial-gradient(1px 1px at 400px 160px, #fff 100%, transparent), radial-gradient(1px 1px at 520px 70px, #fff 100%, transparent), radial-gradient(1.5px 1.5px at 650px 200px, #fff 100%, transparent), radial-gradient(1px 1px at 760px 110px, #fff 100%, transparent), radial-gradient(1px 1px at 900px 40px, #fff 100%, transparent), radial-gradient(1.5px 1.5px at 1020px 180px, #fff 100%, transparent), radial-gradient(1px 1px at 1150px 60px, #fff 100%, transparent);
+    background-repeat: repeat; background-size: 1200px 260px; }
+  .wrap{ position:relative; z-index:1; max-width:1100px; margin:0 auto; padding: 64px 24px 80px; }
+
+  .kicker{ font-family: var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase; color: var(--teal); margin:0 0 10px; display:flex; align-items:center; gap:8px; }
+  .kicker::before{ content:''; width:16px; height:1px; background: var(--teal); display:inline-block; }
+  .kicker.gold{ color: var(--gold); } .kicker.gold::before{ background: var(--gold); }
+  .kicker.violet{ color: var(--violet); } .kicker.violet::before{ background: var(--violet); }
+
+  header.hero{ position:relative; display:flex; flex-direction:column; gap:14px; padding-bottom:40px; border-bottom:1px solid var(--line); margin-bottom:44px; }
+  .eyebrow-row{ display:flex; align-items:center; gap:12px; color: var(--muted); font-size:12.5px; letter-spacing:.04em; text-transform:uppercase; font-family: var(--mono); }
+  h1{ font-family: var(--serif); font-weight:700; font-size: clamp(38px, 5.6vw, 58px); line-height:1.25; margin:0; letter-spacing:-0.015em; color: var(--ink); text-shadow: 0 0 40px rgba(232,183,94,.15); }
+  h1 em{ font-style:italic; color: var(--gold-2); }
+  .subtitle{ width:100%; max-width:none; color: var(--muted); font-size:17px; margin:0; overflow-wrap:break-word; }
+  header.hero::after{ content:''; position:absolute; top:-40px; right:-60px; width:280px; height:280px; border-radius:50%;
+    background: radial-gradient(circle, rgba(156,143,224,.20) 0%, transparent 70%); pointer-events:none; z-index:-1; }
+
+  .screen{ display:none; }
+  .screen.active{ display:block; animation: fadeSlide .38s ease; }
+  @keyframes fadeSlide{ from{ opacity:0; transform: translateY(10px);} to{ opacity:1; transform:none; } }
+  @media (prefers-reduced-motion: reduce){ .screen.active{ animation:none; } }
+
+  .grid{ display:grid; grid-template-columns: 1fr 1.15fr; gap: 28px; align-items:start; }
+  @media (max-width: 860px){ .grid{ grid-template-columns: 1fr; } }
+
+  .panel{ position:relative; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 28px;
+    box-shadow: 0 18px 40px -20px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.03); }
+  .panel::before{ content:''; position:absolute; top:0; left:22px; right:22px; height:1px;
+    background: linear-gradient(90deg, transparent, rgba(232,183,94,.5), transparent); }
+  .panel h2{ font-family: var(--serif); font-size:21px; font-weight:600; margin: 0 0 4px; letter-spacing:-.005em; }
+  .panel .hint{ color:var(--muted); font-size:13.5px; margin: 0 0 22px; }
+
+
+  .field{ margin-bottom: 20px; }
+  .field label{ display:block; font-size:13px; color: var(--muted); margin-bottom:7px; }
+  .field .row-between{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:7px; }
+  .field .row-between .val{ font-family: var(--mono); color: var(--gold); font-size:14px; }
+  .val-input{
+    font-family: var(--mono); color: var(--gold); font-size:14px; background: var(--bg-deep);
+    border:1px solid var(--gold); border-radius:7px; width:92px; min-height:34px; padding:5px 8px; text-align:right; cursor:text;
+  }
+  .val-input:focus{ outline:2px solid var(--teal); outline-offset:1px; }
+  .field .row-between{ gap:10px; align-items:center; }
+  .field .row-between label{ min-width:0; }
+  .field .row-between .val-input{ flex:0 0 110px; width:110px; }
+  .field .row-between .val-input:hover{ border-color:var(--teal); }
+  @media(max-width:500px){ .field .row-between{ align-items:flex-start; flex-direction:column; } .field .row-between .val-input{ flex:0 0 auto; width:100%; text-align:left; } }
+  input[type=range]{ width:100%; accent-color: var(--gold); height:4px; background:transparent; }
+  .star-presets{ display:grid; grid-template-columns: repeat(2,1fr); gap:8px; margin-bottom:6px; }
+  .preset-btn{ background: var(--bg-deep); border:1px solid var(--line); color: var(--muted); border-radius:8px; padding:8px 10px; font-size:12.5px; text-align:left; cursor:pointer; font-family: var(--sans); transition: border-color .15s, color .15s; display:flex; align-items:center; gap:8px; }
+  .star-swatch{ width:10px; height:10px; border-radius:50%; flex-shrink:0; display:inline-block; }
+  .preset-btn:hover{ border-color: var(--gold); color: var(--ink); }
+  .preset-btn.active{ border-color: var(--gold); color: var(--gold); background: rgba(232,183,94,.08); }
+
+  .orbit-box{ position:relative; }
+  #orbitSvg{ width:100%; height:auto; display:block; }
+  .orbit-caption{ font-size:11.5px; color:var(--muted); margin-top:10px; }
+
+  .cta-row{ margin-top:28px; display:flex; justify-content:center; }
+  .btn-primary{ background: linear-gradient(135deg, var(--gold-2), var(--gold)); color: #241A08; border:none; border-radius:11px; padding:16px 36px; font-family: var(--sans); font-weight:600; font-size:15.5px; cursor:pointer; letter-spacing:.02em; transition: transform .15s, box-shadow .15s; box-shadow: 0 10px 28px -10px rgba(232,183,94,.45); }
+  .btn-primary:hover{ transform: translateY(-2px); box-shadow: 0 14px 34px -8px rgba(232,183,94,.55); }
+  .btn-secondary{ background:rgba(255,255,255,.02); color: var(--muted); border:1px solid var(--line); border-radius:9px; padding:10px 18px; font-family: var(--sans); font-size:14px; cursor:pointer; transition: border-color .15s, color .15s; }
+  .btn-secondary:hover{ color: var(--ink); border-color: var(--gold); }
+
+  .results-header{ display:flex; justify-content:space-between; align-items:flex-start; gap:20px; flex-wrap:wrap; margin-bottom:28px; }
+  .results-header h2{ font-family: var(--serif); font-size:26px; margin:0 0 6px; }
+  .results-header .hint{ color:var(--muted); font-size:14px; margin:0; max-width:520px; }
+
+  .probability-panel{ display:grid; grid-template-columns: 220px 1fr; gap:32px; align-items:center; }
+  @media (max-width: 720px){ .probability-panel{ grid-template-columns: 1fr; justify-items:center; text-align:center; } }
+  .gauge-wrap{ position:relative; width:220px; height:220px; filter: drop-shadow(0 0 24px rgba(87,214,190,.18)); }
+  .gauge-num{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  .gauge-num .pct{ font-family: var(--mono); font-size:46px; font-weight:600; }
+  .gauge-num .lbl{ font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin-top:4px; }
+
+  .verdict h3{ margin:0 0 6px; font-family: var(--serif); font-size:20px; }
+  .verdict p{ margin:0 0 16px; color: var(--muted); font-size:14px; max-width: 480px; }
+
+  .factor-list{ display:grid; gap:12px; }
+  .factor .row-between{ display:flex; justify-content:space-between; font-size:12.5px; color:var(--muted); margin-bottom:5px; }
+  .factor .row-between .fval{ font-family: var(--mono); }
+  .bar-track{ height:7px; border-radius:5px; background: var(--bg-deep); overflow:hidden; }
+  .bar-fill{ height:100%; border-radius:5px; transition: width .5s ease; }
+
+  .explain-box{ margin-top:22px; background: var(--panel-2); border:1px solid var(--line); border-radius:10px; padding:16px 18px; font-size:13.3px; color:var(--muted); }
+  .explain-box b{ color:var(--ink); }
+  .explain-box .ecc-line{ margin-top:8px; font-family: var(--mono); font-size:12.5px; color: var(--teal); }
+
+  .readouts{ display:grid; grid-template-columns: repeat(4, 1fr); gap:14px; margin-top:32px; }
+  @media (max-width: 860px){ .readouts{ grid-template-columns: repeat(2,1fr); } }
+  .readout{ background: var(--panel); border:1px solid var(--line); border-radius:13px; padding:19px 17px; box-shadow: 0 12px 28px -18px rgba(0,0,0,.6); }
+  .readout .label{ font-size:12px; color: var(--muted); margin-bottom:8px; }
+  .readout .value{ font-family: var(--mono); font-size:21px; color: var(--ink); font-weight:500; }
+  .readout .sub{ font-family: var(--mono); font-size:12px; color: var(--gold); margin-top:4px; }
+
+  details.formulas{ margin-top:36px; border-top:1px solid var(--line); padding-top:24px; }
+  details.formulas summary{ cursor:pointer; font-family: var(--serif); font-size:18px; font-weight:600; }
+  .formula-list{ margin-top:18px; display:grid; gap:16px; }
+  .formula-item{ background: var(--panel-2); border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
+  .formula-item .name{ font-size:13.5px; color: var(--muted); margin-bottom:6px; }
+  .formula-item .eq{ font-family: var(--mono); color: var(--teal); font-size:15px; }
+  .formula-item .src{ font-size:12px; color: var(--muted); margin-top:6px; }
+
+  .refs{ margin-top:40px; border-top:1px solid var(--line); padding-top:24px; }
+  .refs h2{ font-family: var(--serif); font-size:20px; margin:0 0 4px; }
+  .refs .hint{ color:var(--muted); font-size:13px; margin:0 0 18px; }
+  .refs ol{ list-style:none; margin:0; padding:0; display:grid; gap:14px; }
+  .refs li{ font-size:14px; color:var(--ink); padding-left:2.4em; text-indent:-2.4em; }
+  .refs a{ color: var(--teal); text-decoration:none; }
+  .refs a:hover{ text-decoration:underline; }
+
+  .back-row{ margin-top:36px; }
+  footer{ margin-top:48px; color: var(--muted); font-size:12.5px; text-align:center; }
+</style>
+</head>
+<body>
+<button type="button" id="themeToggle" class="theme-toggle" aria-label="Activar modo claro" aria-pressed="false"><span aria-hidden="true">☀</span><span>Modo claro</span></button>
+<div class="topbar"></div>
+<div class="stars"></div>
+<div class="wrap">
+
+  <header class="hero">
+    <div class="eyebrow-row">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" fill="#E8B75E"/><circle cx="12" cy="12" r="9" stroke="#8B93AC" stroke-width="1"/></svg>
+      <span>Leyes de Kepler &amp; Gravitación Universal</span>
+    </div>
+    <h1>Exo<em>Lab</em> </h1>
+    <p class="subtitle">Ajusta los datos orbitales y gravitacionales de un exoplaneta ficticio, observa su órbita elíptica alrededor de la zona habitable en tiempo real, y estima su similitud con condiciones terrestres.</p>
+  </header>
+
+  <!-- ===================== PANTALLA 1: PARAMETROS ===================== -->
+  <section id="screenInput" class="screen active">
+    <div class="grid">
+      <section class="panel">
+        <p class="kicker gold">Configuración</p>
+        <h2>Parámetros del sistema</h2>
+        <p class="hint">Elige una estrella y define el planeta. Puedes escribir cada valor en su recuadro o mover la barra correspondiente.</p>
+
+        <div class="field">
+          <label>Tipo de estrella</label>
+          <div class="star-presets" id="starPresets"></div>
+        </div>
+
+        <div class="field">
+          <div class="row-between"><label for="numDist" style="margin-bottom:0;">Distancia orbital — semieje mayor (a, UA)</label><input type="text" inputmode="decimal" class="val-input" id="numDist" value="1,00" aria-label="Distancia orbital en UA, utilice coma decimal"></div>
+          <input type="range" id="distancia" min="0.05" max="5" step="0.01" value="1">
+        </div>
+
+        <div class="field">
+          <div class="row-between">
+            <label for="numEcc" style="margin-bottom:0;">Excentricidad orbital (e)</label>
+            <input type="text" inputmode="decimal" class="val-input" id="numEcc" value="0,0167" aria-label="Excentricidad orbital, utilice coma decimal">
+          </div>
+          <input type="range" id="excentricidad" min="0" max="0.85" step="0.0001" value="0.0167">
+        </div>
+
+        <div class="field">
+          <div class="row-between"><label for="numMasa" style="margin-bottom:0;">Masa del planeta (M⊕)</label><input type="text" inputmode="decimal" class="val-input" id="numMasa" value="1,00" aria-label="Masa del planeta en masas terrestres, utilice coma decimal"></div>
+          <input type="range" id="masaPlaneta" min="0.05" max="10" step="0.01" value="1">
+        </div>
+
+        <div class="field">
+          <div class="row-between"><label for="numRadio" style="margin-bottom:0;">Radio del planeta (R⊕)</label><input type="text" inputmode="decimal" class="val-input" id="numRadio" value="1,00" aria-label="Radio del planeta en radios terrestres, utilice coma decimal"></div>
+          <input type="range" id="radioPlaneta" min="0.3" max="3" step="0.01" value="1">
+        </div>
+
+        <div class="field">
+          <div class="row-between"><label for="numAlbedo" style="margin-bottom:0;">Albedo (reflectividad)</label><input type="text" inputmode="decimal" class="val-input" id="numAlbedo" value="0,30" aria-label="Albedo, utilice coma decimal"></div>
+          <input type="range" id="albedo" min="0" max="0.9" step="0.01" value="0.3">
+        </div>
+      </section>
+
+      <section class="panel orbit-box">
+        <p class="kicker">Simulación en vivo</p>
+        <h2>Posición orbital y zona habitable</h2>
+        <p class="hint">La estrella ocupa un foco de la elipse (no el centro). El anillo verde es la zona habitable; su ancho se ajusta con la excentricidad. El tamaño dibujado del planeta responde a su radio; la masa se utiliza en los cálculos físicos.</p>
+        <svg id="orbitSvg" viewBox="0 0 560 300"></svg>
+        <p class="orbit-caption" id="orbitCaption"></p>
+      </section>
+    </div>
+
+    <div class="cta-row">
+      <button class="btn-primary" id="btnCalcular">Calcular habitabilidad →</button>
+    </div>
+  </section>
+
+  <!-- ===================== PANTALLA 2: RESULTADOS ===================== -->
+  <section id="screenResults" class="screen">
+    <div class="results-header">
+      <div>
+        <p class="kicker violet">Resultado</p>
+        <h2>Informe de habitabilidad</h2>
+        <p class="hint">Índice compuesto a partir de la posición orbital, la temperatura de equilibrio y la gravedad superficial, cada una comparada con las condiciones terrestres e incorporando el efecto de la excentricidad.</p>
+      </div>
+      <button class="btn-secondary" id="btnVolver">← Ajustar parámetros</button>
+    </div>
+
+    <div class="panel probability-panel">
+      <div class="gauge-wrap">
+        <svg viewBox="0 0 220 220" width="220" height="220">
+          <circle id="gaugeTrack" cx="110" cy="110" r="92" fill="none" stroke="#1B2340" stroke-width="14"/>
+          <circle id="gaugeArc" cx="110" cy="110" r="92" fill="none" stroke="#57D6BE" stroke-width="14" stroke-linecap="round" transform="rotate(-90 110 110)"/>
+        </svg>
+        <div class="gauge-num">
+          <div class="pct" id="probPct">—</div>
+          <div class="lbl">índice de similitud</div>
+        </div>
+      </div>
+      <div>
+        <div class="verdict">
+          <h3 id="verdictTitle">—</h3>
+          <p id="verdictText"></p>
+        </div>
+        <div class="factor-list">
+          <div class="factor">
+            <div class="row-between"><span>Posición en la zona habitable</span><span class="fval" id="fHZval">—</span></div>
+            <div class="bar-track"><div class="bar-fill" id="fHZbar" style="width:0%; background:#57D6BE;"></div></div>
+          </div>
+          <div class="factor">
+            <div class="row-between"><span>Temperatura de equilibrio</span><span class="fval" id="fTempval">—</span></div>
+            <div class="bar-track"><div class="bar-fill" id="fTempbar" style="width:0%; background:#E8B75E;"></div></div>
+          </div>
+          <div class="factor">
+            <div class="row-between"><span>Gravedad superficial</span><span class="fval" id="fGravval">—</span></div>
+            <div class="bar-track"><div class="bar-fill" id="fGravbar" style="width:0%; background:#E2685C;"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="explain-box">
+      <b>¿Cómo se calcula este porcentaje?</b> Es un índice compuesto —no una probabilidad estadística medida— que compara tres condiciones del planeta con las de la Tierra usando una función de similitud (100% si coincide con el valor terrestre, decreciendo mientras más se aleja): posición orbital relativa a la zona habitable, comparada con la posición terrestre (40% del puntaje), temperatura de equilibrio (35%) y gravedad superficial (25%). La lógica de ponderar varias condiciones físicas sigue el principio de los índices de habitabilidad comparada (Schulze-Makuch et al., 2011). La excentricidad modifica el flujo estelar promedio y la temperatura de equilibrio calculada; la zona habitable equivalente se desplaza hacia afuera (Dressing et al., 2010).
+      <div class="ecc-line" id="eccLine"></div>
+    </div>
+
+    <div class="readouts">
+      <div class="readout"><div class="label">Fuerza gravitacional</div><div class="value" id="outFuerza">—</div><div class="sub" id="outFuerzaSub"></div></div>
+      <div class="readout"><div class="label">Período orbital</div><div class="value" id="outPeriodo">—</div><div class="sub" id="outPeriodoSub"></div></div>
+      <div class="readout"><div class="label">Gravedad superficial</div><div class="value" id="outGravedad">—</div><div class="sub" id="outGravedadSub"></div></div>
+      <div class="readout"><div class="label">Temperatura de equilibrio</div><div class="value" id="outTemp">—</div><div class="sub" id="outTempSub"></div></div>
+    </div>
+
+    <details class="formulas">
+      <summary>Ver fórmulas y fundamento físico</summary>
+      <div class="formula-list">
+        <div class="formula-item">
+          <div class="name">Ley de Gravitación Universal (Newton)</div>
+          <div class="eq">F(a) = G · (M★ · Mₚ) / a²</div>
+          <div class="src">Evaluada a una separación igual al semieje mayor a; en una órbita excéntrica, la fuerza instantánea varía con r. Fuente: Carroll &amp; Ostlie (2017); OpenStax (2016).</div>
+        </div>
+        <div class="formula-item">
+          <div class="name">Tercera Ley de Kepler (forma newtoniana)</div>
+          <div class="eq">T² = 4π²a³ / [G·(M★ + Mₚ)]  →  T(años) ≈ √( a(UA)³ / M★(M☉) )</div>
+          <div class="src">Fuente: OpenStax (2016); Encyclopaedia Britannica (s.f.).</div>
+        </div>
+        <div class="formula-item">
+          <div class="name">Segunda Ley de Kepler (movimiento en órbita elíptica)</div>
+          <div class="eq">r(ν) = a(1−e²)/(1+e·cos ν)  ·  M = E − e·sin E  ·  el planeta se anima con M constante en el tiempo, lo que reproduce el barrido de áreas iguales en tiempos iguales (más veloz en el periastro).</div>
+          <div class="src">Fuente: Carroll &amp; Ostlie (2017); OpenStax (2016).</div>
+        </div>
+        <div class="formula-item">
+          <div class="name">Gravedad superficial</div>
+          <div class="eq">g = G · Mₚ / Rₚ²</div>
+          <div class="src">Fuente: Carroll &amp; Ostlie (2017).</div>
+        </div>
+        <div class="formula-item">
+          <div class="name">Escala visual del planeta</div>
+          <div class="eq">radio dibujado ∝ (Rₚ/R⊕)^0,85 (escala visual ilustrativa)</div>
+          <div class="src">Fuente: Chen &amp; Kipping (2017). El radio ingresado determina el tamaño visual; la masa y el radio se tratan como parámetros independientes en los cálculos físicos.</div>
+        </div>
+        <div class="formula-item">
+          <div class="name">Tamaño y color de la estrella (diagrama orbital)</div>
+          <div class="eq">R★/R☉ = √(L★/L☉) / (T★/T☉)²  &nbsp;·&nbsp;  color aproximado de cuerpo negro según T★ (escala Kelvin→RGB)</div>
+          <div class="src">El radio se obtiene despejándolo de la Ley de Stefan-Boltzmann (L=4πR²σT⁴), ya usada en el cálculo de temperatura de equilibrio (Carroll &amp; Ostlie, 2017). El color es una aproximación estándar del color de un cuerpo negro a esa temperatura efectiva: estrellas más frías se ven anaranjadas/rojizas y las más calientes, blanco-azuladas.</div>
+        </div>
+        <div class="formula-item">
+          <div class="name">Temperatura de equilibrio con corrección por excentricidad</div>
+          <div class="eq">T_eq = 278.3 K · (L★/L☉)^0.25 · (1−A)^0.25 / √(a[UA]) · (1−e²)^(−1/8)</div>
+          <div class="src">Base: derivada de Carroll &amp; Ostlie (2017); NASA (s.f.). La corrección por excentricidad (1−e²)^(−1/8) es la misma que usan Kaltenegger &amp; Sasselov (2011, ec. 6) para candidatos de Kepler, quienes a su vez la retoman de Williams &amp; Pollard (2002); resulta equivalente a decir que el flujo estelar promediado en la órbita crece como (1−e²)^(−1/2), consistente también con Dressing et al. (2010).</div>
+        </div>
+        <div class="formula-item">
+          <div class="name">Zona habitable dependiente de la temperatura estelar, corregida por excentricidad</div>
+          <div class="eq">a_int = (0,95 − a_in·ΔT − b_in·ΔT²)·√(L★/L☉) / (1−e²)^(1/4) &nbsp;·&nbsp; a_ext = (1,37 − a_out·ΔT − b_out·ΔT²)·√(L★/L☉) / (1−e²)^(1/4) &nbsp;·&nbsp; ΔT = T★ − 5700 K</div>
+          <div class="src">Fuente principal: Kaltenegger &amp; Sasselov (2011, ecs. 4-5), con a_in=2,7619×10⁻⁵, b_in=3,8095×10⁻⁹, a_out=1,3786×10⁻⁴, b_out=1,4286×10⁻⁹ (ajuste sobre los modelos climáticos de Kasting, Whitmire &amp; Reynolds, 1993). Los límites base (0,95 y 1,37 UA a 5700K) corresponden a los valores clásicos de Kasting et al. (1993), también reportados en el Astrobiology Primer v2.0 (Domagal-Goldman et al., 2016, tabla 5). El ajuste solo es válido entre 3700K y 7200K (rango de estrellas de secuencia principal del estudio original); ExoLab acota la temperatura efectiva a ese rango antes de aplicar la corrección para no extrapolar el modelo en estrellas más frías, como las enanas rojas M.</div>
+        </div>
+        <div class="formula-item">
+          <div class="name">Índice de similitud terrestre (compuesto)</div>
+          <div class="eq">I = 0,40·S(a) + 0,35·S(T_eq) + 0,25·S(g) &nbsp;·&nbsp; S(x) = 100·exp[−(x−x⊕)²/(2σ²)]</div>
+          <div class="src">La posición se expresa respecto al centro y semiancho de la zona habitable antes de compararla con la posición terrestre. Cada factor se modela como una similitud gaussiana respecto al valor terrestre, inspirado en índices compuestos de habitabilidad como el de Schulze-Makuch et al. (2011). No corresponde a una probabilidad estadística medida, sino a un índice heurístico de comparación.</div>
+        </div>
+      </div>
+    </details>
+
+    <section class="refs">
+      <h2>Referencias</h2>
+      <ol id="refList"></ol>
+    </section>
+
+    <div class="back-row">
+      <button class="btn-secondary" id="btnVolver2">← Ajustar parámetros</button>
+    </div>
+  </section>
+
+  <footer>ExoLab — herramienta educativa de análisis de exoplanetas ficticios. No representa datos de planetas reales.</footer>
+</div>
+
+<script>
+// ---------- Constantes físicas reales (CODATA / IAU) ----------
+const G = 6.67430e-11, M_SUN = 1.98847e30, M_EARTH = 5.9722e24, R_EARTH = 6.371e6, AU = 1.495978707e11;
+const YEAR_DAYS = 365.25, DAY_SECONDS = 86400, G_EARTH_MODEL = G*M_EARTH/(R_EARTH*R_EARTH);
+
+const STARS = [
+  { id:'sol',    nombre:'Sol (G2V)',        M: 1.00, L: 1.00,  Teff: 5778 },
+  { id:'naranja',nombre:'Enana naranja (K5V)', M: 0.70, L: 0.18, Teff: 4500 },
+  { id:'roja',   nombre:'Enana roja (M5V)',  M: 0.21, L: 0.008, Teff: 3100 },
+  { id:'blanca',nombre:'Estrella blanco-amarilla (F8V)', M: 1.20, L: 2.00, Teff: 6200 },
+];
+
+// Radio estelar real (en radios solares) vía Ley de Stefan-Boltzmann: L = 4πR²σT⁴  →  R/R☉ = √(L/L☉) / (T/T☉)²
+// Color aproximado de cuerpo negro según temperatura efectiva (algoritmo estándar de mapeo Kelvin→RGB).
+const TEFF_SOL = 5778;
+function tempAcolorHex(kelvin){
+  let temp = kelvin/100, r, g, b;
+  if (temp <= 66) r = 255;
+  else { r = temp - 60; r = 329.698727446 * Math.pow(r, -0.1332047592); }
+  r = Math.min(255, Math.max(0, r));
+
+  if (temp <= 66){ g = temp; g = 99.4708025861*Math.log(g) - 161.1195681661; }
+  else { g = temp - 60; g = 288.1221695283 * Math.pow(g, -0.0755148492); }
+  g = Math.min(255, Math.max(0, g));
+
+  if (temp >= 66) b = 255;
+  else if (temp <= 19) b = 0;
+  else { b = temp - 10; b = 138.5177312231*Math.log(b) - 305.0447927307; }
+  b = Math.min(255, Math.max(0, b));
+
+  const toHex = (v)=> Math.round(v).toString(16).padStart(2,'0');
+  return '#' + toHex(r) + toHex(g) + toHex(b);
+}
+STARS.forEach(s=>{
+  s.R = Math.sqrt(s.L) / Math.pow(s.Teff/TEFF_SOL, 2);   // radio en R☉, derivado de Stefan-Boltzmann
+  s.color = tempAcolorHex(s.Teff);                         // color aproximado por temperatura
+});
+let starActual = STARS[0];
+
+const el = (id)=>document.getElementById(id);
+const distancia = el('distancia'), excentricidad = el('excentricidad'), masaPlaneta = el('masaPlaneta'), radioPlaneta = el('radioPlaneta'), albedo = el('albedo');
+const numEcc = el('numEcc');
+
+// El control deslizante usa punto internamente (HTML); el campo y todos los resultados muestran coma.
+const esDecimal = (n, digits=2) => Number(n).toLocaleString('es-CL', {minimumFractionDigits:digits, maximumFractionDigits:digits, useGrouping:false});
+function parseDecimal(value){
+  const str = String(value).trim().replace(',', '.');
+  return /^(?:\d+(?:\.\d*)?|\.\d+)$/.test(str) ? Number(str) : NaN;
+}
+// Todos los controles admiten escritura con coma; las barras conservan el punto requerido por HTML.
+function enlazarCampo(sliderId, inputId, decimals){
+  const slider=el(sliderId), input=el(inputId);
+  const min=Number(slider.min), max=Number(slider.max);
+  const normalizar=v=>Math.min(max,Math.max(min,v));
+  slider.addEventListener('input',()=>{ input.value=esDecimal(slider.value,decimals); });
+  input.addEventListener('input',()=>{
+    const v=parseDecimal(input.value);
+    if(Number.isFinite(v)) slider.value=normalizar(v);
+  });
+  input.addEventListener('blur',()=>{
+    const v=parseDecimal(input.value);
+    if(Number.isFinite(v)) slider.value=normalizar(v);
+    input.value=esDecimal(slider.value,decimals);
+  });
+}
+enlazarCampo('distancia','numDist',2);
+enlazarCampo('excentricidad','numEcc',4);
+enlazarCampo('masaPlaneta','numMasa',2);
+enlazarCampo('radioPlaneta','numRadio',2);
+enlazarCampo('albedo','numAlbedo',2);
+
+function buildPresets(){
+  const box = el('starPresets');
+  box.innerHTML = '';
+  STARS.forEach((s,i)=>{
+    const b = document.createElement('button');
+    b.className = 'preset-btn' + (i===0 ? ' active':'');
+    b.innerHTML = `<span class="star-swatch" style="background:${s.color}; box-shadow:0 0 6px ${s.color}99;"></span>${s.nombre}`;
+    b.addEventListener('click', ()=>{
+      document.querySelectorAll('.preset-btn').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active');
+      starActual = s;
+    });
+    box.appendChild(b);
+  });
+}
+
+function fmt(n, d=2){
+  if (!Number.isFinite(n)) return '—';
+  if (Math.abs(n) >= 1000 || (Math.abs(n) < 0.001 && n !== 0)){
+    const [mantissa, exponent] = n.toExponential(2).split('e');
+    return mantissa.replace('.', ',') + ' × 10^' + Number(exponent);
+  }
+  return esDecimal(n,d);
+}
+
+function leerParametros(){
+  return {
+    a_UA: parseFloat(distancia.value),
+    e: parseFloat(excentricidad.value),
+    Mp_earth: parseFloat(masaPlaneta.value),
+    Rp_earth: parseFloat(radioPlaneta.value),
+    A: parseFloat(albedo.value)
+  };
+}
+
+// ---------- HZ dependiente de la temperatura estelar (Kaltenegger & Sasselov, 2011, eqs. 4-5) ----------
+// Línea base en Teff=5700K: límites clásicos de Kasting et al. (1993): 0.95-1.37 UA.
+// La corrección cuadrática es válida entre 3700K y 7200K (rango de estrellas de secuencia principal
+// usado en el estudio); fuera de ese rango se usa el borde del intervalo para no extrapolar el ajuste.
+const HZ_A_IN = 2.7619e-5, HZ_B_IN = 3.8095e-9, HZ_A_OUT = 1.3786e-4, HZ_B_OUT = 1.4286e-9;
+const HZ_LIN_SUN = 0.95, HZ_LOUT_SUN = 1.37;
+function hzEfectiva(L, e, Teff){
+  const TeffValido = Math.max(3700, Math.min(7200, Teff));
+  const Tstar = TeffValido - 5700;
+  const lin_base  = HZ_LIN_SUN  - HZ_A_IN*Tstar  - HZ_B_IN*Tstar*Tstar;
+  const lout_base = HZ_LOUT_SUN - HZ_A_OUT*Tstar - HZ_B_OUT*Tstar*Tstar;
+  const sqrtL = Math.sqrt(L);
+  const hz_in = lin_base*sqrtL, hz_out = lout_base*sqrtL;
+  const factor = Math.pow(1-e*e, 0.25); // (1-e^2)^(1/4), Kaltenegger & Sasselov (2011); Williams & Pollard (2002)
+  return { hz_in: hz_in/factor, hz_out: hz_out/factor, hz_in_base: hz_in, hz_out_base: hz_out };
+}
+
+// =========================================================
+//   VISUALIZACIÓN ORBITAL DINÁMICA (pantalla 1, en vivo)
+// =========================================================
+const svgNS = "http://www.w3.org/2000/svg";
+let svgReady = false;
+const svgEls = {};
+
+function buildSvgSkeleton(){
+  const svg = el('orbitSvg');
+  svg.innerHTML = '';
+  function mk(tag, attrs){
+    const n = document.createElementNS(svgNS, tag);
+    for (const k in attrs) n.setAttribute(k, attrs[k]);
+    svg.appendChild(n);
+    return n;
+  }
+  svgEls.hzOuter = mk('circle', {cx:0, cy:0, r:0, fill:'#57D6BE', 'fill-opacity':'0.10'});
+  svgEls.hzInnerMask = mk('circle', {cx:0, cy:0, r:0, fill:'#070A14'});
+  svgEls.hzOuterRing = mk('circle', {cx:0, cy:0, r:0, fill:'none', stroke:'#57D6BE', 'stroke-width':'1', 'stroke-dasharray':'3,3', opacity:'0.55'});
+  svgEls.hzInnerRing = mk('circle', {cx:0, cy:0, r:0, fill:'none', stroke:'#57D6BE', 'stroke-width':'1', 'stroke-dasharray':'3,3', opacity:'0.55'});
+  svgEls.orbitPath = mk('path', {d:'', fill:'none', stroke:'#8B93AC', 'stroke-width':'1.2', 'stroke-dasharray':'4,4', opacity:'0.6'});
+  svgEls.starGlow = mk('circle', {cx:0, cy:0, r:0, fill:'#E8B75E', opacity:'0.22'});
+  svgEls.star = mk('circle', {cx:0, cy:0, r:12, fill:'#E8B75E'});
+  svgEls.planet = mk('circle', {cx:0, cy:0, r:7, fill:'#57D6BE'});
+  svgEls.distLabel = mk('text', {x:0, y:0, fill:'#E9E5D6', 'font-size':'11', 'font-family':'IBM Plex Mono', 'text-anchor':'middle'});
+  svgReady = true;
+}
+
+// Estado de animación
+const anim = { nu: 0, lastT: null };
+
+function eccAnomalyFromMean(M, e){
+  let E = M;
+  for (let i=0;i<6;i++){ E = E - (E - e*Math.sin(E) - M)/(1 - e*Math.cos(E)); }
+  return E;
+}
+
+function renderOrbitFrame(){
+  if (!svgReady) return;
+  const p = leerParametros();
+  const { hz_in, hz_out } = hzEfectiva(starActual.L, p.e, starActual.Teff);
+  const a = p.a_UA, e = p.e;
+  const bAU = a*Math.sqrt(1-e*e);
+  const apo = a*(1+e);
+
+  const W=560, H=300, sx=300, sy=150;
+  const marginX = 40, marginY = 30;
+  const maxRadiusAU = Math.max(hz_out*1.08, apo*1.05, 0.35);
+  const scale = Math.min(sx-marginX, W-sx-marginX, sy-marginY, H-sy-marginY) / maxRadiusAU;
+
+  // Zona habitable (anillo) centrada en la estrella (foco)
+  svgEls.hzOuter.setAttribute('cx', sx); svgEls.hzOuter.setAttribute('cy', sy); svgEls.hzOuter.setAttribute('r', hz_out*scale);
+  svgEls.hzInnerMask.setAttribute('cx', sx); svgEls.hzInnerMask.setAttribute('cy', sy); svgEls.hzInnerMask.setAttribute('r', hz_in*scale);
+  svgEls.hzOuterRing.setAttribute('cx', sx); svgEls.hzOuterRing.setAttribute('cy', sy); svgEls.hzOuterRing.setAttribute('r', hz_out*scale);
+  svgEls.hzInnerRing.setAttribute('cx', sx); svgEls.hzInnerRing.setAttribute('cy', sy); svgEls.hzInnerRing.setAttribute('r', hz_in*scale);
+
+  // Camino orbital (elipse real, estrella en el foco)
+  let d = '';
+  const steps = 90;
+  for (let i=0; i<=steps; i++){
+    const nu = (i/steps)*2*Math.PI;
+    const r = a*(1-e*e)/(1+e*Math.cos(nu));
+    const x = sx + r*Math.cos(nu)*scale;
+    const y = sy + r*Math.sin(nu)*scale;
+    d += (i===0? 'M':'L') + x.toFixed(2) + ',' + y.toFixed(2) + ' ';
+  }
+  d += 'Z';
+  svgEls.orbitPath.setAttribute('d', d);
+
+  // Estrella: tamaño y color según su tipo (radio real en R☉, comprimido a escala visual; color por temperatura efectiva)
+  const starPx = Math.max(8, Math.min(30, 10*Math.pow(starActual.R, 0.4) + 5));
+  svgEls.starGlow.setAttribute('cx', sx); svgEls.starGlow.setAttribute('cy', sy);
+  svgEls.starGlow.setAttribute('r', starPx*1.9);
+  svgEls.starGlow.setAttribute('fill', starActual.color);
+  svgEls.star.setAttribute('cx', sx); svgEls.star.setAttribute('cy', sy);
+  svgEls.star.setAttribute('r', starPx);
+  svgEls.star.setAttribute('fill', starActual.color);
+
+  // Tamaño del planeta: gobernado por el radio, según el radio ingresado
+  const rPx = Math.max(4, Math.min(16, 5.5 * Math.pow(p.Rp_earth,0.85)));
+  svgEls.planet.setAttribute('r', rPx.toFixed(2));
+
+  // Posición animada del planeta (Kepler II: M uniforme en el tiempo -> velocidad no uniforme en nu)
+  const now = performance.now()/1000;
+  if (anim.lastT === null) anim.lastT = now;
+  const dt = now - anim.lastT;
+  anim.lastT = now;
+  // velocidad angular ilustrativa: inversamente proporcional al período real (T en años), acotada
+  const T_years = Math.sqrt(Math.pow(a,3) / starActual.M);
+  const angSpeed = 1.1 / Math.max(T_years, 0.06); // rad/seg aprox, no a escala real de tiempo
+  anim.nu = (anim.nu + angSpeed*dt) % (2*Math.PI);
+  const E = eccAnomalyFromMean(anim.nu, e);
+  const trueNu = 2*Math.atan2(Math.sqrt(1+e)*Math.sin(E/2), Math.sqrt(1-e)*Math.cos(E/2));
+  const r = a*(1-e*Math.cos(E));
+  const px = sx + r*Math.cos(trueNu)*scale;
+  const py = sy + r*Math.sin(trueNu)*scale;
+  svgEls.planet.setAttribute('cx', px.toFixed(2));
+  svgEls.planet.setAttribute('cy', py.toFixed(2));
+
+  const enHZ = r >= hz_in && r <= hz_out;
+  svgEls.planet.setAttribute('fill', enHZ ? '#57D6BE' : '#E2685C');
+
+  svgEls.distLabel.setAttribute('x', px);
+  svgEls.distLabel.setAttribute('y', py - rPx - 8);
+  svgEls.distLabel.textContent = esDecimal(r) + ' UA';
+
+  el('orbitCaption').textContent = 'Zona habitable efectiva: ' + esDecimal(hz_in) + '–' + esDecimal(hz_out) + ' UA para esta estrella y e = ' + esDecimal(e,4) + '.';
+
+  requestAnimationFrame(renderOrbitFrame);
+}
+
+// =========================================================
+//   CÁLCULO COMPLETO + PROBABILIDAD (pantalla 2)
+// =========================================================
+function gaussScore(x, center, sigma){ return 100 * Math.exp(-Math.pow(x-center,2) / (2*sigma*sigma)); }
+
+function calcularResultados(){
+  const p = leerParametros();
+  const a_m = p.a_UA * AU;
+  const Mp_kg = p.Mp_earth * M_EARTH;
+  const Rp_m = p.Rp_earth * R_EARTH;
+  const Mstar_kg = starActual.M * M_SUN;
+
+  const F = G * Mstar_kg * Mp_kg / (a_m*a_m);
+  const T_seconds = 2*Math.PI*Math.sqrt(Math.pow(a_m,3) / (G*(Mstar_kg+Mp_kg)));
+  const T_days = T_seconds / DAY_SECONDS;
+  const T_years = T_days / YEAR_DAYS;
+  const g = G * Mp_kg / (Rp_m*Rp_m);
+  const g_rel = g / G_EARTH_MODEL;
+
+  const eccFactorTemp = Math.pow(1-p.e*p.e, -0.125); // (1-e^2)^(-1/8)
+  const T_eq = 278.3 * Math.pow(starActual.L, 0.25) * Math.pow(1-p.A, 0.25) / Math.sqrt(p.a_UA) * eccFactorTemp;
+  const T_eq_C = T_eq - 273.15;
+
+  const { hz_in, hz_out, hz_in_base, hz_out_base } = hzEfectiva(starActual.L, p.e, starActual.Teff);
+  const hz_mid = (hz_in+hz_out)/2;
+  const hz_half = Math.max((hz_out-hz_in)/2, 1e-6);
+
+  const T_eq_tierra_K = 278.3 * Math.pow(1-0.3, 0.25) * Math.pow(1-0.0167**2,-0.125);
+  const T_eq_tierra_C = T_eq_tierra_K - 273.15;
+
+  // La Tierra (Sol, 1 UA, e=0,0167) fija el centro de referencia de la posición.
+  const earthHZ = hzEfectiva(1, 0.0167, TEFF_SOL);
+  const earthMid = (earthHZ.hz_in + earthHZ.hz_out)/2;
+  const earthHalf = (earthHZ.hz_out - earthHZ.hz_in)/2;
+  const earthPosition = (1-earthMid)/earthHalf;
+  const sHZ = gaussScore((p.a_UA-hz_mid)/hz_half, earthPosition, 1.0);
+  const sTemp = gaussScore(T_eq_C, T_eq_tierra_C, 40);
+  const sGrav = gaussScore(g_rel, 1.0, 0.5);
+  const prob = 0.40*sHZ + 0.35*sTemp + 0.25*sGrav;
+
+  el('outFuerza').textContent = fmt(F,2) + ' N';
+  el('outFuerzaSub').textContent = 'F(a) = G·M★·Mₚ/a²';
+  el('outPeriodo').textContent = T_years < 1 ? fmt(T_days,1)+' días' : fmt(T_years,2)+' años';
+  el('outPeriodoSub').textContent = 'Kepler III · a='+esDecimal(p.a_UA)+' UA';
+  el('outGravedad').textContent = fmt(g,2) + ' m/s²';
+  el('outGravedadSub').textContent = esDecimal(g_rel) + ' × gravedad terrestre';
+  el('outTemp').textContent = fmt(T_eq,0) + ' K';
+  el('outTempSub').textContent = fmt(T_eq_C,0) + ' °C · corregida por e='+esDecimal(p.e,4);
+
+  el('fHZval').textContent = sHZ.toFixed(0)+'%'; el('fHZbar').style.width = sHZ.toFixed(0)+'%';
+  el('fTempval').textContent = sTemp.toFixed(0)+'%'; el('fTempbar').style.width = sTemp.toFixed(0)+'%';
+  el('fGravval').textContent = sGrav.toFixed(0)+'%'; el('fGravbar').style.width = sGrav.toFixed(0)+'%';
+
+  const probRound = Math.round(prob);
+  el('probPct').textContent = probRound + '%';
+
+  let color, titulo, texto;
+  if (probRound >= 70){ color='#57D6BE'; titulo='Potencialmente habitable'; texto='La combinación de posición orbital, temperatura y gravedad se asemeja a las condiciones terrestres.'; }
+  else if (probRound >= 40){ color='#E8B75E'; titulo='Habitabilidad marginal'; texto='Al menos una condición (posición, temperatura o gravedad) se aleja de forma importante del rango terrestre.'; }
+  else { color='#E2685C'; titulo='Poco probable que sea habitable'; texto='Las condiciones orbitales y físicas difieren sustancialmente de las que sustentan la vida tal como la conocemos.'; }
+
+  el('probPct').style.color = color;
+  el('verdictTitle').textContent = titulo; el('verdictTitle').style.color = color;
+  el('verdictText').textContent = texto;
+
+  const circumference = 2*Math.PI*92;
+  const arc = el('gaugeArc');
+  arc.style.stroke = color;
+  arc.style.strokeDasharray = circumference;
+  arc.style.strokeDashoffset = circumference * (1 - probRound/100);
+  arc.style.transition = 'stroke-dashoffset .6s ease, stroke .3s ease';
+
+  el('eccLine').textContent = 'Con e = ' + esDecimal(p.e,4) + ': zona habitable sin excentricidad ' + esDecimal(hz_in_base) + '–' + esDecimal(hz_out_base) + ' UA → efectiva ' + esDecimal(hz_in) + '–' + esDecimal(hz_out) + ' UA (más excentricidad = más flujo promedio = zona habitable y T_eq desplazadas hacia afuera).';
+}
+
+// ---------- Referencias APA 7 ----------
+const REFERENCIAS = [
+  `Carroll, B. W., &amp; Ostlie, D. A. (2017). <i>An introduction to modern astrophysics</i> (2nd ed.). Cambridge University Press.`,
+  `Chen, J., &amp; Kipping, D. (2017). Probabilistic forecasting of the masses and radii of other worlds. <i>The Astrophysical Journal, 834</i>(1), 17. https://doi.org/10.3847/1538-4357/834/1/17`,
+  `Domagal-Goldman, S. D., Wright, K. E., Adamala, K., Arina de la Rubia, L., Bond, J., Dartnell, L. R., Goldman, A. D., Lynch, K., Naud, M.-E., Paulino-Lima, I. G., Singer, K., Walker-Antonio, M., et al. (2016). The astrobiology primer v2.0. <i>Astrobiology, 16</i>(8), 561–653. https://doi.org/10.1089/ast.2015.1460`,
+  `Dressing, C. D., Spiegel, D. S., Scharf, C. A., Menou, K., &amp; Raymond, S. N. (2010). Habitable climates: The influence of eccentricity. <i>The Astrophysical Journal, 721</i>(2), 1295–1307. https://doi.org/10.1088/0004-637X/721/2/1295`,
+  `Encyclopaedia Britannica. (s.f.). <i>Kepler's laws of planetary motion</i>. Recuperado el 3 de septiembre de 2026, de <a href="https://www.britannica.com" target="_blank" rel="noopener">https://www.britannica.com</a>`,
+  `European Space Agency. (s.f.). <i>Exoplanets and planetary science</i>. Recuperado el 3 de septiembre de 2026, de <a href="https://www.esa.int/Science_Exploration/Space_Science/Exoplanets" target="_blank" rel="noopener">https://www.esa.int/Science_Exploration/Space_Science/Exoplanets</a>`,
+  `Kaltenegger, L., &amp; Sasselov, D. (2011). Exploring the habitable zone for Kepler planetary candidates. <i>The Astrophysical Journal Letters, 736</i>(2), L25. https://doi.org/10.1088/2041-8205/736/2/L25`,
+  `Kasting, J. F., Whitmire, D. P., &amp; Reynolds, R. T. (1993). Habitable zones around main sequence stars. <i>Icarus, 101</i>(1), 108–128. https://doi.org/10.1006/icar.1993.1010`,
+  `NASA. (s.f.). <i>Exoplanet exploration: Worlds beyond our solar system</i>. Recuperado el 3 de septiembre de 2026, de <a href="https://exoplanets.nasa.gov" target="_blank" rel="noopener">https://exoplanets.nasa.gov</a>`,
+  `OpenStax. (2016). <i>University physics, volumen 1</i> — Gravitación. Recuperado de <a href="https://openstax.org/books/university-physics-volume-1/pages/13-1-newtons-law-of-universal-gravitation" target="_blank" rel="noopener">https://openstax.org/books/university-physics-volume-1/pages/13-1-newtons-law-of-universal-gravitation</a>`,
+  `Schulze-Makuch, D., Méndez, A., Fairén, A. G., von Paris, P., Turse, C., Boyer, G., Davila, A. F., António, M. R. de S., Catling, D., &amp; Irwin, L. N. (2011). A two-tiered approach to assessing the habitability of exoplanets. <i>Astrobiology, 11</i>(10), 1041–1052. https://doi.org/10.1089/ast.2010.0592`,
+  `Williams, D. M., &amp; Pollard, D. (2002). Earth-like worlds on eccentric orbits: Excursions beyond the habitable zone. <i>International Journal of Astrobiology, 1</i>(1), 61–69. https://doi.org/10.1017/S1473550402001064`,
+];
+
+function buildRefs(){ el('refList').innerHTML = REFERENCIAS.sort().map(r=>`<li>${r}</li>`).join(''); }
+
+// ---------- Navegación entre pantallas ----------
+function irAResultados(){
+  calcularResultados();
+  el('screenInput').classList.remove('active');
+  el('screenResults').classList.add('active');
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+function irAParametros(){
+  el('screenResults').classList.remove('active');
+  el('screenInput').classList.add('active');
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+// ---------- Init ----------
+const themeToggle = el('themeToggle');
+function setTheme(theme){
+  const light = theme === 'light';
+  document.documentElement.dataset.theme = light ? 'light' : 'dark';
+  themeToggle.setAttribute('aria-pressed', String(light));
+  themeToggle.setAttribute('aria-label', light ? 'Activar modo oscuro' : 'Activar modo claro');
+  themeToggle.children[0].textContent = light ? '☾' : '☀';
+  themeToggle.children[1].textContent = light ? 'Modo oscuro' : 'Modo claro';
+  if (svgEls.hzInnerMask) svgEls.hzInnerMask.setAttribute('fill', light ? '#FFFFFF' : '#131A2E');
+  if (svgEls.distLabel) svgEls.distLabel.setAttribute('fill', light ? '#172239' : '#E9E5D6');
+  if (svgEls.orbitPath) svgEls.orbitPath.setAttribute('stroke', light ? '#475671' : '#8B93AC');
+  try { localStorage.setItem('exolab-theme', light ? 'light' : 'dark'); } catch (_) {}
+}
+let savedTheme = 'dark';
+try { savedTheme = localStorage.getItem('exolab-theme') || 'dark'; } catch (_) {}
+themeToggle.addEventListener('click', () => setTheme(document.documentElement.dataset.theme === 'light' ? 'dark' : 'light'));
+buildPresets();
+buildRefs();
+buildSvgSkeleton();
+setTheme(savedTheme);
+el('btnCalcular').addEventListener('click', irAResultados);
+el('btnVolver').addEventListener('click', irAParametros);
+el('btnVolver2').addEventListener('click', irAParametros);
+requestAnimationFrame(renderOrbitFrame);
+</script>
+</body>
+</html>
